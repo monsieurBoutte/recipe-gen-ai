@@ -12,22 +12,33 @@ load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
 eleven_api_key = os.getenv("ELEVEN_API_KEY")
+replicate_key = os.getenv("REPLICATE_API_TOKEN")
 
-llm = OpenAI(temperature=0.9)
+llm = OpenAI(temperature=0.5)
 
-def generate_recipe(food, calories):
+
+def generate_reciepe(food, calories, time):
+
     prompt = PromptTemplate(
-        input_variables=["food", "calories"],
-        template=""" 
-         You are an experienced chef, create a recipe for the following food {food} that is under {calories} calories.
+        input_variables=["food", "calories", "time"],
+        template="""
+        You are an experienced chef, please write a recipe for {food}
+        that has a maximum of {calories} calories
+        and takes {time} minutes to prepare and cook.
         """
     )
+    llm_chain = LLMChain(
+        llm=llm,
+        prompt=prompt
+    )
 
-    chain = LLMChain(llm=llm, prompt=prompt)
-    return chain.run({
-    'food': food,
-    'calories': calories
+    reciepe = llm_chain.run({
+        "food": food,
+        "calories": calories,
+        "time": time
     })
+
+    return reciepe
 
 
 def generate_audio(text, voice):
@@ -42,29 +53,31 @@ def generate_images(food):
     )
     return output
 
+
 def app():
-    st.title("Recipe Generator")
+    st.title("Recipe Generator!")
 
-    with st.form(key='my_form'):
-        food = st.text_input(label="Enter what you want to cook.", placeholder="Enter a food you want to cook")
-        calories = st.number_input(label="Enter the calorie limit.", min_value=1, max_value=3000, value=200)
+    with st.form(key='recipe_form'):
+        food = st.text_input("What food do you want to cook?")
+        calories = st.number_input("How many calories do you want to eat?")
+        time = st.number_input(
+            "How much time do you have to cook? (in minutes)")
 
-        options = ["Bella", "Antoni", "Arnold", "Adam", "Domi", "Elli", "Josh", "Rachel", "Sam"]
+        options = ["Bella", "Antoni", "Arnold", "Adam",
+                   "Domi", "Elli", "Josh", "Rachel", "Sam"]
         voice = st.selectbox("Select a voice", options)
 
-        submit_button = st.form_submit_button("Generate Recipe")
+        submit_button = st.form_submit_button(label="Generate Recipe")
 
     if submit_button:
-        recipe = generate_recipe(food, calories) 
-        audio = generate_audio(recipe, voice)
+        recipe = generate_reciepe(food, calories, time)
 
         st.markdown(recipe)
-
-        st.audio(audio, format='audio/mp3')
+        st.audio(generate_audio(recipe, voice))
 
         images = generate_images(food)
         st.image(images[0])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app()
